@@ -1,59 +1,77 @@
 import curses
-from curses import KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN
-from random import randint
+import random
 
-curses.initscr() #initialize
-window = curses.newwin(30, 60, 0, 0) #create new window H=30, W=60
-window.keypad(True) #enable keypad
-curses.noecho() #turn off automatic echoing of keys to the screen
-curses.curs_set(0)
-window.nodelay(True) #makes it possible to not wait for the user input
+def main():
+    #setup window
+    curses.initscr()
+    curses.curs_set(0)  # ocultar cursor
+    win = curses.newwin(20, 60, 0, 0)
+    win.keypad(1)
+    win.timeout(100)
 
-#initiate values
-key = KEY_RIGHT
-score = 0
+    #initial key direction
+    key = curses.KEY_RIGHT
 
-#initialize first food and snake coordinates
-snake = [[5,8], [5,7], [5,6]]
-food = [10,25]
+    #snake and food position
+    snake = [(4, 10), (4, 9), (4, 8)]
+    food = (10, 20)
 
-#display the first food
-window.addch(food[0], food[1], 'O')
+    #add food to the window
+    win.addch(food[0], food[1], '*')
 
-while key != 27: # While they Esc key is not pressed
-    window.border(0)
-    #display the score and title
-    window.addstr(0, 2, 'Score: ' + str(score) + ' ') 
-    window.addstr(0, 27, ' SNAKE! ')
-    #Make the snake faster as it eats more
-    window.timeout(140 - (len(snake)/5 + len(snake)/10)%120) 
-    
-    event = window.getch() #refreshes the screen and then waits for the user to hit a key
-    key = key if event == -1 else event 
+    #game logic
+    try:
+        while True:
+            next_key = win.getch()
+            key = key if next_key == -1 else next_key
 
-    # Calculates the new coordinates of the head of the snake.
-    snake.insert(0, [snake[0][0] + (key == KEY_DOWN and 1) + (key == KEY_UP and -1), snake[0][1] + (key == KEY_LEFT and -1) + (key == KEY_RIGHT and 1)])
+            #check if snake hit the border or itself
+            if (snake[0][0] in [0, 19] or
+                snake[0][1] in [0, 59] or
+                snake[0] in snake[1:]):
+                break
 
-    #Exit if snake crosses the boundaries
-    if snake[0][0] == 0 or snake[0][0] == 29 or snake[0][1] == 0 or snake[0][1] == 59: break
+            #add new food
+            if snake[0] == food:
+                food = None
+                while food is None:
+                    nf = (random.randint(1, 18), random.randint(1, 58))
+                    food = nf if nf not in snake else None
+                win.addch(food[0], food[1], '*')
+            else:
+                #remove tail
+                tail = snake.pop()
+                win.addch(int(tail[0]), int(tail[1]), ' ')
 
-    #Exit if snake runs over itself
-    if snake[0] in snake[1:]: break
+            #calculate new head position
+            head_y = snake[0][0]
+            head_x = snake[0][1]
 
-    # When snake eats the food
-    if snake[0] == food:                                            
-        food = []
-        score += 1
-        while food == []:
-            # Generate coordinates for next food
-            food = [randint(1, 28), randint(1, 58)]                
-            if food in snake: food = []
-        window.addch(food[0], food[1], 'O') #display the food
-    else:    
-        last = snake.pop()
-        window.addch(last[0], last[1], ' ')
-    window.addch(snake[0][0], snake[0][1], '#')
-    
+            if key == curses.KEY_DOWN:
+                head_y += 1
+            elif key == curses.KEY_UP:
+                head_y -= 1
+            elif key == curses.KEY_LEFT:
+                head_x -= 1
+            elif key == curses.KEY_RIGHT:
+                head_x += 1
 
-curses.endwin() #close the window and end the game
-print("\nScore: " + str(score))
+            #add new head
+            new_head = (head_y, head_x)
+            snake.insert(0, new_head)
+
+            # draw snake head
+            win.addch(snake[0][0], snake[0][1], '#')
+
+            #refresh window
+            win.refresh()
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        #cleanup
+        curses.endwin()
+        print("¡Gracias por jugar!")
+
+if __name__ == "__main__":
+    main()
